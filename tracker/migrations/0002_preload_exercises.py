@@ -28,7 +28,7 @@ def remove_exercises(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tracker', '0001_initial'),
+        ('tracker', '0001_initial'),  # Replace with your actual latest migration
     ]
 
     operations = [
