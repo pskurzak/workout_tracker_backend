@@ -76,10 +76,15 @@ WSGI_APPLICATION = 'workout_tracker.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'workoutdb',            # Set during RDS creation
+        'USER': 'postgres',                # Or your custom username
+        'PASSWORD': 'kobhap-jeczit-jaKza8',    # The one you saved
+        'HOST': 'workout-tracker-db.cl8waeakayez.us-east-2.rds.amazonaws.com',
+        'PORT': '5432',
     }
 }
+
 
 
 # Password validation
