@@ -19,7 +19,7 @@ def add_exercises(apps, schema_editor):
         ("Lateral Raise", "Shoulders"),
     ]
     for name, category in preset_exercises:
-        Exercise.objects.create(name=name, category=category)
+        Exercise.objects.get_or_create(name=name, category=category)
 
 def remove_exercises(apps, schema_editor):
     Exercise = apps.get_model('tracker', 'Exercise')
