@@ -14,6 +14,7 @@ from django.core.exceptions import ValidationError
 class ExerciseListView(generics.ListAPIView):
     queryset = Exercise.objects.all()
     serializer_class = ExerciseSerializer
+    permission_classes = [IsAuthenticated]  # Require login to match workouts API
 
 # /api/workouts/ (list, create, delete, update)
 class WorkoutLogViewSet(viewsets.ModelViewSet):
@@ -21,10 +22,11 @@ class WorkoutLogViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Only return workouts for the logged-in user
-        return WorkoutLog.objects.filter(user=self.request.user)
+        # Only return workouts for the logged-in user, newest first
+        return WorkoutLog.objects.filter(user=self.request.user).order_by('-date')
 
     def perform_create(self, serializer):
+        # Attach the current authenticated user to the workout
         serializer.save(user=self.request.user)
 
     def perform_destroy(self, instance):
