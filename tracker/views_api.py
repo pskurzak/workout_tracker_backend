@@ -1,4 +1,5 @@
-from rest_framework import generics
+from rest_framework import generics, viewsets, permissions, status
+from rest_framework.exceptions import PermissionDenied
 from .models import Exercise, WorkoutLog
 from .serializers import ExerciseSerializer, WorkoutLogSerializer
 
@@ -6,7 +7,6 @@ from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
@@ -15,10 +15,22 @@ class ExerciseListView(generics.ListAPIView):
     queryset = Exercise.objects.all()
     serializer_class = ExerciseSerializer
 
-# /api/workouts/
-class WorkoutLogListCreateView(generics.ListCreateAPIView):
-    queryset = WorkoutLog.objects.all()
+# /api/workouts/ (list, create, delete, update)
+class WorkoutLogViewSet(viewsets.ModelViewSet):
     serializer_class = WorkoutLogSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Only return workouts for the logged-in user
+        return WorkoutLog.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_destroy(self, instance):
+        if instance.user != self.request.user:
+            raise PermissionDenied("You do not have permission to delete this workout.")
+        instance.delete()
 
 # /api/signup/
 @api_view(["POST"])
@@ -42,6 +54,7 @@ def signup(request):
     user = User.objects.create_user(username=username, email=email, password=password)
     return Response({"message": "Account created successfully"}, status=status.HTTP_201_CREATED)
 
+# /api/me/
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def me(request):
