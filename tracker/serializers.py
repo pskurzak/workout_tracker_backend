@@ -7,7 +7,9 @@ class ExerciseSerializer(serializers.ModelSerializer):
         model = Exercise
         fields = '__all__'
 
+
 class WorkoutLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkoutLog
         fields = '__all__'
+        read_only_fields = ['user']  # Prevent clients from posting a user ID
