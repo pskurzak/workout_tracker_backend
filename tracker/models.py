@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+import uuid  # NEW
 
 class Exercise(models.Model):
     name = models.CharField(max_length=100, unique=True)  # e.g., "Push-up", "Pull-up"
@@ -10,12 +11,15 @@ class Exercise(models.Model):
 
 
 class WorkoutLog(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)  # NEW — link workout to the logged-in user
-    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)  
-    date = models.DateField()  
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
+    date = models.DateField()
     sets = models.PositiveIntegerField()
     reps = models.PositiveIntegerField()
-    weight = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)  # optional
+    weight = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+
+    # NEW: groups multiple entries into a single workout session
+    session_id = models.UUIDField(default=uuid.uuid4, db_index=True)
 
     def __str__(self):
         weight_str = f" @ {self.weight} lbs" if self.weight else ""

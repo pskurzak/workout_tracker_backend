@@ -14,25 +14,35 @@ from django.core.exceptions import ValidationError
 class ExerciseListView(generics.ListAPIView):
     queryset = Exercise.objects.all()
     serializer_class = ExerciseSerializer
-    permission_classes = [IsAuthenticated]  # Require login to match workouts API
+    permission_classes = [IsAuthenticated]  # keep consistent with workouts API
 
-# /api/workouts/ (list, create, delete, update)
+
+# /api/workouts/ (list, create, retrieve, update, delete)
 class WorkoutLogViewSet(viewsets.ModelViewSet):
     serializer_class = WorkoutLogSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Only return workouts for the logged-in user, newest date first, then newest ID
-        return WorkoutLog.objects.filter(user=self.request.user).order_by('-date', '-id')
+        """
+        Return only the current user's logs in a stable order so the client
+        can group by session_id and keep sets in creation order.
+        """
+        return (
+            WorkoutLog.objects
+            .filter(user=self.request.user)
+            .order_by('date', 'session_id', 'id')  # stable ascending
+        )
 
     def perform_create(self, serializer):
-        # Attach the current authenticated user to the workout
+        # Attach the current authenticated user to the workout log.
+        # session_id comes from the client (optional); model default will fill it if missing.
         serializer.save(user=self.request.user)
 
     def perform_destroy(self, instance):
         if instance.user != self.request.user:
             raise PermissionDenied("You do not have permission to delete this workout.")
         instance.delete()
+
 
 # /api/signup/
 @api_view(["POST"])
@@ -55,6 +65,7 @@ def signup(request):
 
     user = User.objects.create_user(username=username, email=email, password=password)
     return Response({"message": "Account created successfully"}, status=status.HTTP_201_CREATED)
+
 
 # /api/me/
 @api_view(["GET"])
