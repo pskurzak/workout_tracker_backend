@@ -22,8 +22,8 @@ class WorkoutLogViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Only return workouts for the logged-in user, newest first
-        return WorkoutLog.objects.filter(user=self.request.user).order_by('-date')
+        # Only return workouts for the logged-in user, newest date first, then newest ID
+        return WorkoutLog.objects.filter(user=self.request.user).order_by('-date', '-id')
 
     def perform_create(self, serializer):
         # Attach the current authenticated user to the workout
