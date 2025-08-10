@@ -54,9 +54,12 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'workoutdb',
         'USER': 'postgres',
-        'PASSWORD': 'kobhap-jeczit-jaKza8',
+        'PASSWORD': '***REMOVED***',
         'HOST': 'workout-tracker-db.cl8waeakayez.us-east-2.rds.amazonaws.com',
         'PORT': '5432',
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
     }
 }
 
