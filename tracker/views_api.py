@@ -31,7 +31,7 @@ class WorkoutLogViewSet(viewsets.ModelViewSet):
         return (
             WorkoutLog.objects
             .filter(user=self.request.user)
-            .select_related("exercise", "session")
+            .select_related("exercise", "session_ref")
             .order_by("-date", "-id")
         )
 
