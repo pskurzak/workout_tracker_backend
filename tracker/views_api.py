@@ -1,47 +1,71 @@
 from rest_framework import generics, viewsets, permissions, status
 from rest_framework.exceptions import PermissionDenied
-from .models import Exercise, WorkoutLog
-from .serializers import ExerciseSerializer, WorkoutLogSerializer
-
-from django.contrib.auth.models import User
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+
+from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+
+from .models import Exercise, WorkoutLog, WorkoutSession
+from .serializers import (
+    ExerciseSerializer,
+    WorkoutLogSerializer,
+    WorkoutSessionSerializer,
+)
 
 # /api/exercises/
 class ExerciseListView(generics.ListAPIView):
     queryset = Exercise.objects.all()
     serializer_class = ExerciseSerializer
-    permission_classes = [IsAuthenticated]  # keep consistent with workouts API
+    permission_classes = [permissions.IsAuthenticated]
 
 
-# /api/workouts/ (list, create, retrieve, update, delete)
+# /api/workouts/
 class WorkoutLogViewSet(viewsets.ModelViewSet):
     serializer_class = WorkoutLogSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        """
-        Return only the current user's logs in a stable order so the client
-        can group by session_id and keep sets in creation order.
-        """
         return (
             WorkoutLog.objects
             .filter(user=self.request.user)
-            .order_by('date', 'session_id', 'id')  # stable ascending
+            .select_related("exercise", "session")
+            .order_by("-date", "-id")
         )
 
     def perform_create(self, serializer):
-        # Attach the current authenticated user to the workout log.
-        # session_id comes from the client (optional); model default will fill it if missing.
-        serializer.save(user=self.request.user)
+        # user enforced in serializer
+        serializer.save()
 
     def perform_destroy(self, instance):
         if instance.user != self.request.user:
             raise PermissionDenied("You do not have permission to delete this workout.")
         instance.delete()
+
+
+# /api/sessions/
+class WorkoutSessionViewSet(viewsets.ModelViewSet):
+    serializer_class = WorkoutSessionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        qs = WorkoutSession.objects.filter(user=self.request.user)
+        include = self.request.query_params.get("include_entries")
+        if include == "1":
+            # serializer already includes entries; prefetch for perf
+            qs = qs.prefetch_related("entries__exercise")
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_update(self, serializer):
+        # name updates
+        if serializer.instance.user != self.request.user:
+            raise PermissionDenied("Invalid session.")
+        serializer.save()
 
 
 # /api/signup/
