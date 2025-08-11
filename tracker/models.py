@@ -3,12 +3,8 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
-# ✅ Add this so older migrations still work
-def generate_uuid():
-    return str(uuid.uuid4())
-
-
 class Exercise(models.Model):
+    # kept for legacy rows / admin view, but not required for new data
     name = models.CharField(max_length=100)
     category = models.CharField(max_length=100)
 
@@ -24,22 +20,24 @@ class WorkoutSession(models.Model):
 
 
 class WorkoutLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+
+    # New: allow **free text** exercise names; FK is optional for legacy/admin
+    exercise = models.ForeignKey(Exercise, null=True, blank=True, on_delete=models.SET_NULL)
+    exercise_name = models.CharField(max_length=100, blank=True, default="")
+
     date = models.DateField()
     sets = models.PositiveIntegerField()
     reps = models.PositiveIntegerField()
-    weight = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
-    session_id = models.UUIDField(default=uuid.uuid4)
-    session_ref = models.ForeignKey(
-        WorkoutSession,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
-    name = models.CharField(max_length=100, default="Workout")
+    weight = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
 
-    # If you still want to keep user tracking:
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    # One card per submission
+    session_id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
+    session_ref = models.ForeignKey(WorkoutSession, on_delete=models.SET_NULL, null=True, blank=True)
+
+    # “title” for the workout card
+    name = models.CharField(max_length=100, blank=True, default="Workout")
 
     def __str__(self):
-        return f"{self.exercise.name} - {self.sets}x{self.reps}"
+        label = self.exercise_name or (self.exercise.name if self.exercise else "Exercise")
+        return f"{label} - {self.sets}x{self.reps}"
