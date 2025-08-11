@@ -1,6 +1,11 @@
 import uuid
 from django.db import models
 from django.contrib.auth.models import User
+import uuid
+
+# Compatibility for old migration 0006 that expects this symbol:
+def generate_uuid() -> str:
+    return str(uuid.uuid4())
 
 
 class Exercise(models.Model):
@@ -32,7 +37,8 @@ class WorkoutLog(models.Model):
     weight = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
 
     # One card per submission
-    session_id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
+    #session_id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
+    session_id = models.CharField(max_length=36, default=generate_uuid, db_index=True)
     session_ref = models.ForeignKey(WorkoutSession, on_delete=models.SET_NULL, null=True, blank=True)
 
     # “title” for the workout card
