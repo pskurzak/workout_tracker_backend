@@ -1,24 +1,9 @@
-from django.urls import path, include
+# tracker/urls_api.py
 from rest_framework.routers import DefaultRouter
-from .views_api import (
-    ExerciseListView,
-    WorkoutLogViewSet,
-    WorkoutSessionViewSet,
-    SignupView,
-    ProfileView,
-    MyExercisesView,
-    AccountDeleteView,
-)
+from .views_api import ExerciseViewSet, WorkoutLogViewSet
 
 router = DefaultRouter()
-router.register(r'exercises', ExerciseListView, basename='exercise')
-router.register(r'workouts', WorkoutLogViewSet, basename='workoutlog')
-router.register(r'sessions', WorkoutSessionViewSet, basename='workoutsession')
+router.register(r'exercises', ExerciseViewSet, basename='exercise')
+router.register(r'workouts', WorkoutLogViewSet, basename='workout')
 
-urlpatterns = [
-    path('', include(router.urls)),
-    path('signup/', SignupView.as_view(), name='signup'),
-    path('profile/', ProfileView.as_view(), name='profile'),
-    path('my-exercises/', MyExercisesView.as_view(), name='my-exercises'),   # ✅ new
-    path('account/', AccountDeleteView.as_view(), name='account-delete'),    # ✅ new (DELETE)
-]
+urlpatterns = router.urls
