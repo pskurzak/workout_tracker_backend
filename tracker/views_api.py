@@ -1,120 +1,64 @@
-from django.contrib.auth.models import User
-from django.db.models import Q
-from rest_framework import viewsets, permissions, generics
-from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
-from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.views import APIView
+from rest_framework import viewsets, permissions
 from rest_framework.pagination import PageNumberPagination
-from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
-from .models import Exercise, WorkoutLog, WorkoutSession
-from .serializers import (
-    ExerciseSerializer, WorkoutLogSerializer, WorkoutSessionSerializer,
-    SignupSerializer, UserSerializer
-)
+from .models import Exercise, WorkoutLog
+from .serializers import ExerciseSerializer, WorkoutLogSerializer
 
 
-# ----- Pagination -----
 class DefaultPagination(PageNumberPagination):
     page_size = 100
     page_size_query_param = "page_size"
     max_page_size = 500
 
 
-# ----- Exercises (legacy list for admin/testing; app will use free text) -----
-class ExerciseListView(viewsets.ReadOnlyModelViewSet):
-    queryset = Exercise.objects.all()
+class ExerciseViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Exercise.objects.all().order_by("name")
     serializer_class = ExerciseSerializer
-    permission_classes = [permissions.AllowAny]
+    permission_classes = [permissions.IsAuthenticated]
 
 
-# ----- Workout Logs -----
 class WorkoutLogViewSet(viewsets.ModelViewSet):
+    """
+    Flat CRUD for workout rows (each set/entry).
+    The iOS app groups by session_id on the client.
+    """
     serializer_class = WorkoutLogSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = DefaultPagination
 
     def get_queryset(self):
-        # Always show only the authenticated user's logs
-        return WorkoutLog.objects.filter(user=self.request.user).order_by("id")
+        # Return only current user's rows, newest first
+        return (
+            WorkoutLog.objects
+            .filter(user=self.request.user)
+            .select_related("exercise")
+            .order_by("-date", "-id")
+        )
 
     def perform_create(self, serializer):
+        """
+        ✅ Minimal fix:
+        - Respect client-provided session_id so multiple rows belong to the same workout.
+        - Don’t overwrite it on the server.
+        """
         serializer.save(user=self.request.user)
 
-    # Optional: allow PATCH rename on a single row
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
-
-
-# ----- Workout Sessions (kept minimal) -----
-class WorkoutSessionViewSet(viewsets.ModelViewSet):
-    queryset = WorkoutSession.objects.all()
-    serializer_class = WorkoutSessionSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-
-# ----- Signup returns token -----
-class SignupView(generics.CreateAPIView):
-    serializer_class = SignupSerializer
-    permission_classes = [permissions.AllowAny]
-
-    def create(self, request, *args, **kwargs):
-        resp = super().create(request, *args, **kwargs)
-        user = User.objects.get(username=request.data["username"])
-        token, _ = Token.objects.get_or_create(user=user)
-        return Response({"token": token.key})
-
-
-# ----- Profile -----
-class ProfileView(generics.RetrieveAPIView):
-    serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_object(self):
-        return self.request.user
-
-
-# ----- My Exercises (typeahead from user history) -----
-class MyExercisesView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        q = (request.query_params.get("q") or "").strip().lower()
-
-        # names from FK (legacy)
-        fk_names = WorkoutLog.objects.filter(
-            user=request.user, exercise__isnull=False
-        ).values_list("exercise__name", flat=True)
-
-        # names from free text
-        free_names = WorkoutLog.objects.filter(
-            user=request.user
-        ).exclude(exercise_name="").values_list("exercise_name", flat=True)
-
-        names = {n for n in fk_names if n} | {n for n in free_names if n}
-
-        if q:
-            names = {n for n in names if q in n.lower()}
-
-        # recent-first ordering by last log id
-        recent = list(
+    @action(detail=False, methods=["get"])
+    def my_exercises(self, request):
+        """
+        Optional helper endpoint returning distinct free‑text exercise names user has used.
+        (Your iOS 'ExerciseSearchView' can query this.)
+        """
+        q = request.query_params.get("q", "").strip().lower()
+        names = (
             WorkoutLog.objects.filter(user=request.user)
-            .exclude(exercise_name="")
-            .order_by("-id")
+            .exclude(exercise_name__isnull=True)
+            .exclude(exercise_name__exact="")
             .values_list("exercise_name", flat=True)
+            .distinct()
         )
-        order = {name: i for i, name in enumerate(recent)}
-        sorted_names = sorted(names, key=lambda n: order.get(n, 10**9))
-
-        return Response([{"name": n} for n in sorted_names[:50]])
-
-
-# ----- Account Deletion (App Review requirement) -----
-class AccountDeleteView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def delete(self, request):
-        user = request.user
-        user.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if q:
+            names = [n for n in names if q in n.lower()]
+        return Response([{"name": n} for n in names])
