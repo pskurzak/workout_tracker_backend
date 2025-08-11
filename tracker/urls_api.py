@@ -1,8 +1,7 @@
-# tracker/urls_api.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views_api import (
-    ExerciseViewSet,          # ✅ updated to match new views_api.py
+    ExerciseListView,
     WorkoutLogViewSet,
     WorkoutSessionViewSet,
     SignupView,
@@ -12,7 +11,7 @@ from .views_api import (
 )
 
 router = DefaultRouter()
-router.register(r'exercises', ExerciseViewSet, basename='exercise')
+router.register(r'exercises', ExerciseListView, basename='exercise')
 router.register(r'workouts', WorkoutLogViewSet, basename='workoutlog')
 router.register(r'sessions', WorkoutSessionViewSet, basename='workoutsession')
 
@@ -20,6 +19,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('signup/', SignupView.as_view(), name='signup'),
     path('profile/', ProfileView.as_view(), name='profile'),
-    path('my-exercises/', MyExercisesView.as_view(), name='my-exercises'),   # ✅ new
-    path('account/', AccountDeleteView.as_view(), name='account-delete'),    # ✅ new (DELETE)
+    path('my-exercises/', MyExercisesView.as_view(), name='my-exercises'),
+    path('account/', AccountDeleteView.as_view(), name='account-delete'),
 ]
