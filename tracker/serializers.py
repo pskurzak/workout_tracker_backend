@@ -6,19 +6,13 @@ from .models import Exercise, WorkoutLog, WorkoutSession
 class ExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exercise
-        fields = ['id', 'name', 'category']
+        fields = '__all__'
 
 
 class WorkoutLogSerializer(serializers.ModelSerializer):
-    exercise = ExerciseSerializer(read_only=True)
-
     class Meta:
         model = WorkoutLog
-        fields = [
-            'id', 'date', 'sets', 'reps', 'weight', 'exercise', 'user',
-            'exercise_name', 'session_id'
-        ]
-        read_only_fields = ['user']
+        fields = '__all__'
 
 
 class WorkoutSessionSerializer(serializers.ModelSerializer):
@@ -30,7 +24,7 @@ class WorkoutSessionSerializer(serializers.ModelSerializer):
 class SignupSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'password', 'email']
+        fields = ['username', 'email', 'password']
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
@@ -41,4 +35,4 @@ class SignupSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['username', 'email']
+        fields = ['id', 'username', 'email']

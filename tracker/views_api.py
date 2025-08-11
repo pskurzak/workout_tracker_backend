@@ -3,11 +3,9 @@ from django.db.models import Q
 from rest_framework import viewsets, permissions, generics
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework import status
-import uuid  # ✅ for generating session_id if missing
 
 from .models import Exercise, WorkoutLog, WorkoutSession
 from .serializers import (
@@ -23,7 +21,7 @@ class DefaultPagination(PageNumberPagination):
     max_page_size = 500
 
 
-# ----- Exercises (legacy list for admin/testing; app will use free text) -----
+# ----- Exercises -----
 class ExerciseListView(viewsets.ReadOnlyModelViewSet):
     queryset = Exercise.objects.all()
     serializer_class = ExerciseSerializer
@@ -37,28 +35,20 @@ class WorkoutLogViewSet(viewsets.ModelViewSet):
     pagination_class = DefaultPagination
 
     def get_queryset(self):
-        # Always show only the authenticated user's logs
         return WorkoutLog.objects.filter(user=self.request.user).order_by("id")
 
     def perform_create(self, serializer):
-        # ✅ Bug fix: Only generate session_id if client didn't send one
-        if not serializer.validated_data.get('session_id'):
-            serializer.validated_data['session_id'] = uuid.uuid4()
         serializer.save(user=self.request.user)
 
-    # Optional: allow PATCH rename on a single row
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
 
-
-# ----- Workout Sessions (kept minimal) -----
+# ----- Workout Sessions -----
 class WorkoutSessionViewSet(viewsets.ModelViewSet):
     queryset = WorkoutSession.objects.all()
     serializer_class = WorkoutSessionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
 
-# ----- Signup returns token -----
+# ----- Signup -----
 class SignupView(generics.CreateAPIView):
     serializer_class = SignupSerializer
     permission_classes = [permissions.AllowAny]
@@ -79,19 +69,17 @@ class ProfileView(generics.RetrieveAPIView):
         return self.request.user
 
 
-# ----- My Exercises (typeahead from user history) -----
+# ----- My Exercises -----
 class MyExercisesView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         q = (request.query_params.get("q") or "").strip().lower()
 
-        # names from FK (legacy)
         fk_names = WorkoutLog.objects.filter(
             user=request.user, exercise__isnull=False
         ).values_list("exercise__name", flat=True)
 
-        # names from free text
         free_names = WorkoutLog.objects.filter(
             user=request.user
         ).exclude(exercise_name="").values_list("exercise_name", flat=True)
@@ -101,7 +89,6 @@ class MyExercisesView(APIView):
         if q:
             names = {n for n in names if q in n.lower()}
 
-        # recent-first ordering by last log id
         recent = list(
             WorkoutLog.objects.filter(user=request.user)
             .exclude(exercise_name="")
@@ -114,7 +101,7 @@ class MyExercisesView(APIView):
         return Response([{"name": n} for n in sorted_names[:50]])
 
 
-# ----- Account Deletion (App Review requirement) -----
+# ----- Account Deletion -----
 class AccountDeleteView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
