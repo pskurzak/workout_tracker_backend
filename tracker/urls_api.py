@@ -5,7 +5,9 @@ from .views_api import (
     WorkoutLogViewSet,
     WorkoutSessionViewSet,
     SignupView,
-    ProfileView
+    ProfileView,
+    MyExercisesView,
+    AccountDeleteView,
 )
 
 router = DefaultRouter()
@@ -17,4 +19,6 @@ urlpatterns = [
     path('', include(router.urls)),
     path('signup/', SignupView.as_view(), name='signup'),
     path('profile/', ProfileView.as_view(), name='profile'),
+    path('my-exercises/', MyExercisesView.as_view(), name='my-exercises'),   # ✅ new
+    path('account/', AccountDeleteView.as_view(), name='account-delete'),    # ✅ new (DELETE)
 ]
