@@ -10,6 +10,7 @@ class ExerciseSerializer(serializers.ModelSerializer):
 
 
 class WorkoutLogSerializer(serializers.ModelSerializer):
+    weight = serializers.FloatField(allow_null=True, required=False)
     class Meta:
         model = WorkoutLog
         fields = '__all__'
