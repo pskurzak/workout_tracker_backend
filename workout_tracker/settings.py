@@ -68,7 +68,7 @@ TEMPLATES = [
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 
 # Option B: Use your RDS values when DATABASE_URL is not set
-RDS_HOST = "workout-tracker-db.cl8waeakayex.us-east-2.rds.amazonaws.com"
+RDS_HOST = "workout-tracker-db.cl8waeakayez.us-east-2.rds.amazonaws.com"
 RDS_NAME = "workoutdb"
 RDS_USER = "postgres"
 RDS_PASSWORD = "***REMOVED***"
